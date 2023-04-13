@@ -81,6 +81,7 @@ int nb_ch_to_blank();
 // GLOBALS VARIABLES
 
 int nb_slides;
+char title[] = "this is a title"; // TODO be better
 char author[] = "arthur-jacquin"; // TODO be better
 int width, height;                  // terminal size
 int offset, dw;                     // offset, displayed width
@@ -266,47 +267,71 @@ display_slide(const struct slide s, int index, int nb_parts)
     // display a slide on the screen
 
     uint32_t *ch = _malloc(sizeof(uint32_t) * dw * (height - 2));
-    uint16_t *fg = _malloc(sizeof(uint16_t) * dw * (height - 2));
-    uint16_t *bg = _malloc(sizeof(uint16_t) * dw * (height - 2));
+    uint16_t *fg = _malloc(sizeof(uint16_t) * 2 * (height - 2));
     struct line *l;
     char ruler[8];
-    int nb_lines;
-    int nb_displayed_line, h_offset;
+    int nb_lines, parts, nb_displayed_lines, h_offset;
     int preformatted_mode = 0;
+    int accent, color, centering, lvl;
     int i, j, k;
 
     // decompress slide
     l = s.start;
     nb_lines = 0;
+    parts = 0;
 
-    // create buffer of decompressed lines
-    // TODO be better
-    nb_lines = nb_displayed_line = 1;
-
-    // for (j = 0; j < dw; j++) {
-        // ch[j] = 'o';
+    // nb_lines = nb_displayed_lines = 1;
+    // for (j = 0; j < ; j++) {
+        // ch[j] = '.';
         // fg[j] = COLOR_DEFAULT;
-        // bg[j] = COLOR_BG;
     // }
 
-    // {"=>",  COLOR_LINK},
-    // {"#",   COLOR_HEADING},
-    // {"* ",  COLOR_LIST,         COLOR_DEFAULT},
-    // {">",   COLOR_QUOTE,        COLOR_DEFAULT},
+    // create buffer of decompressed lines
+    while (l != NULL) {
+        if (l->chars[0] == '-' && l->chars[1] == '-' && l->chars[2] == '-') {
+            preformatted_mode ^= 1;
+        } else if (l->chars[0] == '^') {
+            if (++parts <= nb_parts)
+                nb_displayed_lines = nb_lines;
+        } else {
+            centering = 0;
+            if (preformatted_mode) {
+                accent = color = COLOR_DEFAULT;
+            } else if (l->chars[0] == '=' && l->chars[1] == '>') {
+                accent = color = COLOR_LINK;
+            } else if (l->chars[0] == '#') {
+                lvl = (l->chars[1] == '#') ? ((l->chars[2] == '#') ? 3 : 2) : 1;
+                centering = (lvl == 1 || lvl == 2);
+                accent = color = COLOR_HEADING | ((lvl==1) ? TB_UNDERLINE : 0);
+            } else {
+                accent = color = COLOR_DEFAULT;
+                if (l->chars[0] == '*' && l->chars[1] == ' ') {
+                    accent = COLOR_LIST;
+                } else if (l->chars[0] == '=' && l->chars[1] == '>') {
+                    accent = COLOR_QUOTE;
+                }
+            }
+            // hide #, center and wrap lines, fill with ' ', colors
+            // manage nb_lines, check <= available lines
+        }
+        l = l->next;
+    }
+    if (++parts <= nb_parts)
+        nb_displayed_lines = nb_lines;
 
     // actual content printing
     tb_clear();
     h_offset = 1 + ((height - 2 - nb_lines) >> 1);
-    k = 0;
-    for (i = 0; i < nb_displayed_line; i++) {
+    for (k = i = 0; i < nb_displayed_lines; i++) {
         for (j = 0; j < dw; j++) {
-            tb_set_cell(offset + j, h_offset + i, 'o', COLOR_DEFAULT, TB_DEFAULT);
-            // tb_set_cell(offset + j, h_offset + i, ch[k], fg[k], bg[k]);
-            k++;
+            tb_set_cell(offset + j, h_offset + i, ch[k++],
+                fg[2*i + ((j < 2) ? 0 : 1)], COLOR_BG);
         }
     }
 
     // metadata printing
+    tb_printf((width - strlen(title))/2, 0, COLOR_METADATA, COLOR_BG,
+        "%s", title);
     tb_printf(0, height - 1, COLOR_METADATA, COLOR_BG, "%s", author);
     sprintf(ruler, "%d/%d", index, nb_slides);
     tb_printf(width - strlen(ruler), height - 1, COLOR_METADATA, COLOR_BG,
@@ -314,7 +339,6 @@ display_slide(const struct slide s, int index, int nb_parts)
 
     free(ch);
     free(fg);
-    free(bg);
 }
 
 int
@@ -327,9 +351,7 @@ main(int argc, char *argv[])
     int index = 1;
     int displayed_parts = 1;
 
-
-    // PARSE ARGUMENTS
-
+    // parsing arguments
     if (argc < 2 || !(strcmp(argv[1], "--help") && strcmp(argv[1], "-h"))) {
         printf("%s\n", HELP_MESSAGE);
         return 0;
@@ -340,17 +362,13 @@ main(int argc, char *argv[])
         buf = parse_file(argv[1]);
     }
 
-
-    // INIT TERMBOX
-
+    // init termbox
     tb_init();
     tb_set_output_mode(OUTPUT_MODE);
     tb_set_clear_attrs(COLOR_DEFAULT, COLOR_BG);
     resize(tb_width(), tb_height());
 
-
-    // MAIN LOOP
-
+    // main loop
     while (1) {
         display_slide(buf[index - 1], index, displayed_parts);
         tb_present();
