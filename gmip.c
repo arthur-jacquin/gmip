@@ -272,47 +272,103 @@ display_slide(const struct slide s, int index, int nb_parts)
     char ruler[8];
     int nb_lines, parts, nb_displayed_lines, h_offset;
     int preformatted_mode = 0;
-    int accent, color, centering, lvl;
-    int i, j, k;
+    int accent, color, lvl;
+    int i, j, jlw, k, kc, kclw, len, w_offset;
 
     // decompress slide
     l = s.start;
-    nb_lines = 0;
+    k = nb_lines = 0;
     parts = 0;
 
-    // nb_lines = nb_displayed_lines = 1;
-    // for (j = 0; j < ; j++) {
-        // ch[j] = '.';
-        // fg[j] = COLOR_DEFAULT;
-    // }
-
     // create buffer of decompressed lines
-    while (l != NULL) {
-        if (l->chars[0] == '-' && l->chars[1] == '-' && l->chars[2] == '-') {
+    while (nb_lines < height - 2 && l != NULL) {
+        if (l->chars[0] == '`' && l->chars[1] == '`' && l->chars[2] == '`') {
             preformatted_mode ^= 1;
         } else if (l->chars[0] == '^') {
             if (++parts <= nb_parts)
                 nb_displayed_lines = nb_lines;
         } else {
-            centering = 0;
+            lvl = 0;
             if (preformatted_mode) {
                 accent = color = COLOR_DEFAULT;
             } else if (l->chars[0] == '=' && l->chars[1] == '>') {
                 accent = color = COLOR_LINK;
             } else if (l->chars[0] == '#') {
                 lvl = (l->chars[1] == '#') ? ((l->chars[2] == '#') ? 3 : 2) : 1;
-                centering = (lvl == 1 || lvl == 2);
                 accent = color = COLOR_HEADING | ((lvl==1) ? TB_UNDERLINE : 0);
             } else {
                 accent = color = COLOR_DEFAULT;
                 if (l->chars[0] == '*' && l->chars[1] == ' ') {
                     accent = COLOR_LIST;
-                } else if (l->chars[0] == '=' && l->chars[1] == '>') {
+                } else if (l->chars[0] == '>') {
                     accent = COLOR_QUOTE;
                 }
             }
-            // hide #, center and wrap lines, fill with ' ', colors
-            // manage nb_lines, check <= available lines
+            kc = 0;
+            // hide '#' for headings
+            while (lvl && l->chars[kc] == '#')
+                kc++;
+            while (nb_lines < height - 2) {
+                // decompress to UTF-8, move to next character
+                // TODO wrap on spaces only
+                while (l->chars[kc] == ' ')
+                    kc++;
+                kclw = kc;
+                j = jlw = 0;
+                while (l->chars[kc]) {
+                    if (j == dw) {
+                        if (l->chars[kc] != ' ' && jlw > 0) {
+                            // unprint word
+                            j = jlw;
+                            kc = kclw;
+                        }
+                        break;
+                    }
+                    if (l->chars[kc] == ' ') {
+                        // identify next start of word
+                        kclw = kc;
+                        while (l->chars[kclw] == ' ')
+                            kclw++;
+                        if (!(l->chars[kclw])) {
+                            kc = kclw;
+                            break;
+                        } else if (j + kclw - kc >= dw) {
+                            break;
+                        } else {
+                            // print spaces
+                            while (kc < kclw) {
+                                ch[k + (j++)] = ' ';
+                                kc++;
+                            }
+                        }
+                    } else {
+                        if (kc == kclw)
+                            jlw = j;
+                        len = utf8_char_length(l->chars[kc]);
+                        ch[k + (j++)] = unicode(l->chars, kc, len);
+                        kc += len;
+                    }
+                }
+
+                // center
+                if (((lvl == 1) || (lvl == 2)) && j < dw) {
+                    j += (w_offset = (dw - j)/2);
+                    for (i = j - 1; i >= w_offset; i--)
+                        ch[k + i] = ch[k + i - w_offset];
+                    while (i >= 0)
+                        ch[k + (i--)] = ' ';
+                }
+                // fill with ' '
+                while (j < dw)
+                    ch[k + (j++)] = ' ';
+                // colors, nb_lines increment
+                fg[2*nb_lines] = accent;
+                accent = fg[2*nb_lines + 1] = color;
+                nb_lines++;
+                k += dw;
+                if (!(l->chars[kc]))
+                    break;
+            }
         }
         l = l->next;
     }
@@ -325,7 +381,7 @@ display_slide(const struct slide s, int index, int nb_parts)
     for (k = i = 0; i < nb_displayed_lines; i++) {
         for (j = 0; j < dw; j++) {
             tb_set_cell(offset + j, h_offset + i, ch[k++],
-                fg[2*i + ((j < 2) ? 0 : 1)], COLOR_BG);
+                fg[2*i + ((j == 0) ? 0 : 1)], COLOR_BG);
         }
     }
 
@@ -348,7 +404,7 @@ main(int argc, char *argv[])
     struct tb_event ev;             // struct to retrieve events
     int m = 0;                      // multiplier
     int di;
-    int index = 1;
+    int index = 0;
     int displayed_parts = 1;
 
     // parsing arguments
@@ -370,7 +426,7 @@ main(int argc, char *argv[])
 
     // main loop
     while (1) {
-        display_slide(buf[index - 1], index, displayed_parts);
+        display_slide(buf[index], index + 1, displayed_parts);
         tb_present();
         tb_poll_event(&ev);
 
@@ -400,7 +456,7 @@ main(int argc, char *argv[])
                 break;
             case 'g':
             case 'G':
-                index = (ev.ch == 'g') ? MIN(m, nb_slides) : nb_slides;
+                index = ((ev.ch == 'g') ? MIN(m, nb_slides) : nb_slides) - 1;
                 displayed_parts = 1;
                 m = 0;
                 continue;
@@ -427,9 +483,10 @@ main(int argc, char *argv[])
         if ((di > 0 && displayed_parts < buf[index].nb_parts) ||
             (di < 0 && displayed_parts > 1)) {
             displayed_parts = MAP(displayed_parts + di, 1, buf[index].nb_parts);
-        } else {
-            index = MAP(index + di, 1, nb_slides);
-            displayed_parts = 1;
+        } else if ((di > 0 && index < nb_slides - 1) ||
+            (di < 0 && index > 0)) {
+            index = MAP(index + di, 0, nb_slides - 1);
+            displayed_parts = (di > 0) ? 1 : buf[index].nb_parts;
         }
     }
 }
