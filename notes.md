@@ -3,11 +3,6 @@
 * test wrapping
 * man pages
 
-## for 0.1.0
-
-* screencast
-* gmip.html
-
 ## for 1.0.0
 
 * hunt for bugs

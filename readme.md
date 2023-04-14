@@ -2,7 +2,7 @@
 
 A gemtext to slideshow generator and viewer.
 
-[![asciicast](https://asciinema.org/a/575017.svg)](https://asciinema.org/a/575017)
+[![asciicast](https://asciinema.org/a/577542.svg)](https://asciinema.org/a/577542)
 
 
 ## Description
