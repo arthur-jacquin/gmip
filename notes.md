@@ -2,11 +2,9 @@
 
 * test wrapping
 * man pages
-* _malloc wrapper
 
 ## for 0.1.0
 
-* better demo.gmi
 * screencast
 * gmip.html
 

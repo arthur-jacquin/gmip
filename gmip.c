@@ -20,7 +20,7 @@
 #define DEFAULT_AUTHOR              ""
 #define PADDING                     0
 #define MIN_WIDTH                   8
-#define MAX_WIDTH                   50
+#define MAX_WIDTH                   55
 #define MIN_HEIGHT                  8
 #define DEFAULT_BUF_SIZE            4
 #define DEFAULT_CHARS_SIZE          (1 << 7)
@@ -217,8 +217,9 @@ parse_file(const char *filename)
         if (!preformatted_mode && (ml >= 3 && chars[0] == '-' && chars[1] == '-'
             && chars[2] == '-') || reached_EOF) {
             // closing the slide
-            if (nb_slides + 1 >= buf_size) {
-                while (nb_slides + 1 >= buf_size)
+            nb_slides++;
+            if (nb_slides >= buf_size) {
+                while (nb_slides >= buf_size)
                     buf_size <<= 1;
                 new_buf = _malloc(sizeof(struct slide) * buf_size);
                 for (k = 0; k < nb_slides; k++) {
@@ -228,13 +229,14 @@ parse_file(const char *filename)
                 free(buf);
                 buf = new_buf;
             }
-            nb_slides++;
             buf[nb_slides].start = NULL;
             buf[nb_slides].nb_parts = 1;
         } else if (!preformatted_mode && !strncmp("%title:", chars, 7)) {
-            strcpy(title, &(chars[7]));
+            strncpy(title, &(chars[7]), ml - 7);
+            title[ml - 7] = '\0';
         } else if (!preformatted_mode && !strncmp("%author:", chars, 8)) {
-            strcpy(author, &(chars[8]));
+            strncpy(author, &(chars[8]), ml - 8);
+            author[ml - 8] = '\0';
         } else if (!preformatted_mode && !strncmp("%date:", chars, 6)) {
         } else {
             // append the new line

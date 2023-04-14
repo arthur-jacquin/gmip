@@ -1,36 +1,59 @@
-%title:How to be rich
+%title:gmip introduction
 %author:arthur-jacquin
+%date:2023-04-14
 
-# Heading 1
+## gmip
 
-## Heading 2
+Hi!
 
-### Heading 3
+gmip generates slideshows from gemtext files.
 
-```
-# heading 1
-* bullet list
-> quote
-^
-=> link
-%title:lol
-```
+Let's explore it together.
 
 ---
 
-This is a éé line
+### Syntax
 
-Content
+The official gemtext syntax is available at:
+
+=> https://gemini.circumlunar.space/docs/gemtext.gmi
 ^
 
-> Joli citation
+Additionally, gmip also understands, at the start of a line:
 
-=> https://jacquin.xyz
+* `---` to delimit slides,
+^
+* `^` to stop output (it enables progressive revealing),
+^
+* `%title:My title`, `%author:Me` and `%date:1970-01-01` ASCII metadata.
 
 ---
 
-This is another slide
-^
-* bullet
-^
+# Level 1 heading
+
+## Level 2 heading
+
+### Level 3 heading
+
 * list
+
+> quote
+
+=> link
+
+```
+preformatted content (syntax interpretation is disabled)
+# heading
+* list
+> quote
+=> link
+---
+^
+%title:Ignored title
+```
+
+---
+
+I hope you enjoyed this introduction! For more information, go to:
+
+=> https://jacquin.xyz/gmip

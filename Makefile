@@ -13,7 +13,7 @@ dist: clean
 
 install: gmip
 	mkdir -p ${PREFIX}/bin
-	cp -f edit ${PREFIX}/bin
+	cp -f gmip ${PREFIX}/bin
 	chmod 755 ${PREFIX}/bin/gmip
 
 uninstall:
