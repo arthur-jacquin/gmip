@@ -7,8 +7,8 @@ clean:
 	rm -f gmip gmip-*.tar.gz
 
 dist: clean
-	tar -cf gmip-${VERSION}.tar LICENSE Makefile readme.md *.md \
-		config.mk termbox.h *.c
+	tar -cf gmip-${VERSION}.tar LICENSE Makefile readme.md demo.gmi \
+        config.mk termbox.h *.c
 	gzip gmip-${VERSION}.tar
 
 install: gmip

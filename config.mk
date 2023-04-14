@@ -1,3 +1,3 @@
 VERSION = 0.1.0
 PREFIX = /usr/local
-CC = gcc -static
+CC = cc -static

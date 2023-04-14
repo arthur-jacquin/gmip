@@ -1,0 +1,36 @@
+%title:How to be rich
+%author:arthur-jacquin
+
+# Heading 1
+
+## Heading 2
+
+### Heading 3
+
+```
+# heading 1
+* bullet list
+> quote
+^
+=> link
+%title:lol
+```
+
+---
+
+This is a éé line
+
+Content
+^
+
+> Joli citation
+
+=> https://jacquin.xyz
+
+---
+
+This is another slide
+^
+* bullet
+^
+* list

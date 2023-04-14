@@ -16,6 +16,8 @@
 #define VERSION                     "0.1.0"
 #define HELP_MESSAGE                "Help available at https://jacquin.xyz/gmip"
 
+#define DEFAULT_TITLE               argv[1]
+#define DEFAULT_AUTHOR              ""
 #define PADDING                     0
 #define MIN_WIDTH                   8
 #define MAX_WIDTH                   50
@@ -75,19 +77,16 @@ void *_malloc(int size);
 void resize(int w, int h);
 struct slide *parse_file(const char *filename);
 void display_slide(const struct slide s, int index, int nb_parts);
-int nb_ch_to_blank();
 
 
 // GLOBALS VARIABLES
 
 int nb_slides;
-char title[] = "this is a title"; // TODO be better
-char author[] = "arthur-jacquin"; // TODO be better
+char title[4*MAX_WIDTH + 1], author[4*MAX_WIDTH + 1];
 int width, height;                  // terminal size
 int offset, dw;                     // offset, displayed width
-
-static char utf8_start[4] = {0, 0xc0, 0xe0, 0xf0};
-static char masks[4] = {0x7f, 0x1f, 0x0f, 0x07};
+char utf8_start[4] = {0, 0xc0, 0xe0, 0xf0};
+char masks[4] = {0x7f, 0x1f, 0x0f, 0x07};
 
 
 // FUNCTION DEFINITIONS, MAIN
@@ -146,6 +145,8 @@ _malloc(int size)
 void
 resize(int w, int h)
 {
+    // try to apply new size
+
     if ((width = w) < (2*PADDING + MIN_WIDTH) || (height = h) < MIN_HEIGHT) {
         tb_shutdown();
         exit(ERR_TERM_NOT_BIG_ENOUGH);
@@ -163,7 +164,7 @@ parse_file(const char *filename)
     struct slide *buf, *new_buf;
     struct line *line, *last_line;
     char *chars, *new_chars;
-    int reached_EOF, buf_size, chars_size;
+    int reached_EOF, preformatted_mode, buf_size, chars_size;
     int c, ml, l, k;
 
     // init variables
@@ -171,6 +172,7 @@ parse_file(const char *filename)
     chars = _malloc((chars_size = DEFAULT_CHARS_SIZE));
     nb_slides = 0;
     reached_EOF = 0;
+    preformatted_mode = 0;
     buf[nb_slides].start = NULL;
     buf[nb_slides].nb_parts = 1;
 
@@ -209,9 +211,11 @@ parse_file(const char *filename)
                 ml += l;
             }
         }
-
-        if ((ml >= 3 && chars[0] == '-' && chars[1] == '-' && chars[2] == '-')
-            || reached_EOF) {
+        
+        if (ml >= 3 && chars[0] == '`' && chars[1] == '`' && chars[2] == '`')
+            preformatted_mode ^= 1;
+        if (!preformatted_mode && (ml >= 3 && chars[0] == '-' && chars[1] == '-'
+            && chars[2] == '-') || reached_EOF) {
             // closing the slide
             if (nb_slides + 1 >= buf_size) {
                 while (nb_slides + 1 >= buf_size)
@@ -227,6 +231,11 @@ parse_file(const char *filename)
             nb_slides++;
             buf[nb_slides].start = NULL;
             buf[nb_slides].nb_parts = 1;
+        } else if (!preformatted_mode && !strncmp("%title:", chars, 7)) {
+            strcpy(title, &(chars[7]));
+        } else if (!preformatted_mode && !strncmp("%author:", chars, 8)) {
+            strcpy(author, &(chars[8]));
+        } else if (!preformatted_mode && !strncmp("%date:", chars, 6)) {
         } else {
             // append the new line
             line = _malloc(sizeof(struct line));
@@ -240,7 +249,7 @@ parse_file(const char *filename)
                 last_line->next = line;
                 last_line = line;
             }
-            if (ml >= 1 && chars[0] == '^') // part delimiter
+            if (!preformatted_mode && ml >= 1 && chars[0] == '^')
                 buf[nb_slides].nb_parts++;
         }
     }
@@ -264,7 +273,7 @@ parse_file(const char *filename)
 void
 display_slide(const struct slide s, int index, int nb_parts)
 {
-    // display a slide on the screen
+    // display slide s on the screen
 
     uint32_t *ch = _malloc(sizeof(uint32_t) * dw * (height - 2));
     uint16_t *fg = _malloc(sizeof(uint16_t) * 2 * (height - 2));
@@ -284,7 +293,7 @@ display_slide(const struct slide s, int index, int nb_parts)
     while (nb_lines < height - 2 && l != NULL) {
         if (l->chars[0] == '`' && l->chars[1] == '`' && l->chars[2] == '`') {
             preformatted_mode ^= 1;
-        } else if (l->chars[0] == '^') {
+        } else if (!preformatted_mode && l->chars[0] == '^') {
             if (++parts <= nb_parts)
                 nb_displayed_lines = nb_lines;
         } else {
@@ -310,7 +319,6 @@ display_slide(const struct slide s, int index, int nb_parts)
                 kc++;
             while (nb_lines < height - 2) {
                 // decompress to UTF-8, move to next character
-                // TODO wrap on spaces only
                 while (l->chars[kc] == ' ')
                     kc++;
                 kclw = kc;
@@ -358,9 +366,11 @@ display_slide(const struct slide s, int index, int nb_parts)
                     while (i >= 0)
                         ch[k + (i--)] = ' ';
                 }
+
                 // fill with ' '
                 while (j < dw)
                     ch[k + (j++)] = ' ';
+
                 // colors, nb_lines increment
                 fg[2*nb_lines] = accent;
                 accent = fg[2*nb_lines + 1] = color;
@@ -403,9 +413,9 @@ main(int argc, char *argv[])
     struct slide *buf;              // buffer of pointers to slides
     struct tb_event ev;             // struct to retrieve events
     int m = 0;                      // multiplier
-    int di;
     int index = 0;
     int displayed_parts = 1;
+    int di;
 
     // parsing arguments
     if (argc < 2 || !(strcmp(argv[1], "--help") && strcmp(argv[1], "-h"))) {
@@ -415,6 +425,8 @@ main(int argc, char *argv[])
         printf("%s\n", VERSION);
         return 0;
     } else {
+        strcpy(title, DEFAULT_TITLE);
+        strcpy(author, DEFAULT_AUTHOR);
         buf = parse_file(argv[1]);
     }
 
