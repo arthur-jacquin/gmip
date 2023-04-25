@@ -1,0 +1,31 @@
+.TH GMIP 1 gmip\-VERSION
+.SH NAME
+gmip \- A gemtext to slideshow generator and viewer.
+.SH SYNOPSIS
+.B gmip 
+.IB slideshow.gmi
+.SH DESCRIPTION
+gmip generates slideshows from gemtext files.
+.SH USAGE
+To create a slideshow, just write a gemtext file. Additionally to gemtext
+syntax, gmip also understands, at the start of a line:
+.TP
+.B ---
+Delimits slides.
+.TP
+.B ^
+Stops output (it enables progressive revealing).
+.TP
+.B %title:value
+Specifies an ASCII title.
+.TP
+.B %author:value
+Specifies an ASCII author.
+.TP
+.B %date:value
+Specifies an ASCII date.
+.SH CUSTOMIZATION
+gmip is customized by modifying and (re)compiling the source code.
+This keeps it fast, secure and simple.
+.SH SEE ALSO
+.BR mdp (1)

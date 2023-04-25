@@ -1,7 +1,7 @@
 # TODO
 
+* move to sourcehut ?
 * test wrapping
-* man pages
 
 ## for 1.0.0
 
