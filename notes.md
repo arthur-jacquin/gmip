@@ -1,12 +1,12 @@
 # TODO
 
-* move to sourcehut ?
-* test wrapping
+## known problems
 
-## for 1.0.0
+* bug when empty line after metadata
 
-* hunt for bugs
-* better colorscheme ?
+## potential improvements
+
+* move to sourcehut
 
 ## at each version
 
